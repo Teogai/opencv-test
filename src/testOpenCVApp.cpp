@@ -22,6 +22,8 @@ class testOpenCVApp : public AppNative {
 	
 	CaptureRef		mCapture;
 	gl::Texture		mTexture;
+	cv::Mat			bg;
+
 };
 
 void testOpenCVApp::setup()
@@ -30,12 +32,15 @@ void testOpenCVApp::setup()
 	// http://www.flickr.com/photos/stuckincustoms/4045813826/
 	
 	ci::Surface8u surface( loadImage( loadAsset( "dfw.jpg" ) ) );
+	cv::Mat a(toOcv(surface));
+	bg = a;
+
 	cv::Mat input( toOcv( surface ) );
 	cv::Mat output;
 
 	//init camera
 	try {
-		mCapture = Capture::create(640, 480, Capture::findDeviceByNameContains("Front"));
+		mCapture = Capture::create(640, 480, Capture::findDeviceByNameContains("Logitech"));
 		mCapture->start();
 	}
 	catch (...) {
@@ -87,8 +92,8 @@ void testOpenCVApp::removeGreen(const Mat& myImage, Mat& Result)
 		{
 			cv::Vec3b color = myImage.at<cv::Vec3b>(j, i);
 			int b = color[0], g = color[1], r = color[2];
-			if (g - r > 20 && g - b >20){
-				Result.at<cv::Vec3b>(j, i) = { 0, 0, 0 };
+			if (g + g - r - b > 40){
+				Result.at<cv::Vec3b>(j, i) = bg.at<cv::Vec3b>(j, i);
 				//console() << "yes" << std::endl;
 			}
 			else {
