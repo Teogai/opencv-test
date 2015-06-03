@@ -22,14 +22,18 @@ class testOpenCVApp : public AppNative {
 	void update();
 	void draw();
 	void removeGreen(const Mat& myImage, const Mat& Background, Mat& Result);
-	cv::Vec3b getBG(int j, int i);
 	void invisGreen(const Mat& myImage, Mat& Result);
+	void playRec(const Mat& myImage, Mat& Result);
 	void sharpen(const Mat& myImage, Mat& Result);
 	
 	CaptureRef		mCapture;
 	gl::Texture		mTexture;
-	cv::Mat		bgImage;
+	cv::Mat			bgImage;
 
+	vector<cv::Mat> vRec;
+	bool isRecording = false;
+	bool isPlaying = false;
+	int playIndex = 0;
 };
 
 void testOpenCVApp::setup()
@@ -54,6 +58,22 @@ void testOpenCVApp::keyDown(KeyEvent event) {
 	if (event.getChar() == '1'){
 		bgImage = toOcv(mCapture->getSurface());
 	}
+	else if (event.getChar() == '2'){
+		vRec.clear();
+		isRecording = true;
+	}
+	else if (event.getChar() == '3'){
+		isRecording = false;
+	}
+	else if (event.getChar() == '4'){
+		if (vRec.size() > 0) {
+			playIndex = 0;
+			isPlaying = true;
+		}
+	}
+	else if (event.getChar() == '5'){
+		isPlaying = false;
+	}
 }
 
 void testOpenCVApp::update()
@@ -63,10 +83,19 @@ void testOpenCVApp::update()
 	//Mat bg = toOcv(bgImage);
 	Mat output;
 
-	invisGreen(input, output);
+	playRec(input, output);
+	//invisGreen(input, output);
 	//removeGreen(input, bg, output);
 	//sharpen(input, output)
 	mTexture = gl::Texture( fromOcv( output ) );
+
+	if (isRecording) {
+		vRec.push_back(input);
+	}
+	if (isPlaying) {
+		playIndex++;
+		if (playIndex == vRec.size()) playIndex = 0;
+	}
 }
 
 void testOpenCVApp::draw()
@@ -100,7 +129,6 @@ void testOpenCVApp::removeGreen(const Mat& myImage, const Mat& Background, Mat& 
 
 void testOpenCVApp::invisGreen(const Mat& myImage, Mat& Result)
 {
-	int count = 0;
 	Result.create(myImage.size(), myImage.type());
 
 	for (int j = 0; j < myImage.rows; ++j)
@@ -110,16 +138,40 @@ void testOpenCVApp::invisGreen(const Mat& myImage, Mat& Result)
 			cv::Vec3b color = myImage.at<cv::Vec3b>(j, i);
 			int b = color[0], g = color[1], r = color[2];
 			if (g + g - r - b > 40){
-				Result.at<cv::Vec3b>(j, i) = bgImage.at<cv::Vec3b>(j, i);
-				count++;
+				Result.at<cv::Vec3b>(j, i) = myImage.at<cv::Vec3b>(j, i);
 			}
 			else {
-				Result.at<cv::Vec3b>(j, i) = myImage.at<cv::Vec3b>(j, i);
+				Result.at<cv::Vec3b>(j, i) = bgImage.at<cv::Vec3b>(j, i);
 			}
 		}
 	}
 }
 
+void testOpenCVApp::playRec(const Mat& myImage, Mat& Result)
+{
+	Result.create(myImage.size(), myImage.type());
+
+	for (int j = 0; j < myImage.rows; ++j)
+	{
+		for (int i = 0; i < myImage.cols; ++i)
+		{
+			cv::Vec3b color;
+			if (isPlaying) {
+				color = vRec[playIndex].at<cv::Vec3b>(j, i);
+				int b = color[0], g = color[1], r = color[2];
+				if (g + g - r - b > 40){
+					Result.at<cv::Vec3b>(j, i) = myImage.at<cv::Vec3b>(j, i);
+				}
+				else {
+					Result.at<cv::Vec3b>(j, i) = vRec[playIndex].at<cv::Vec3b>(j, i);
+				}
+			}
+			else{
+				Result.at<cv::Vec3b>(j, i) = myImage.at<cv::Vec3b>(j, i);
+			}
+		}
+	}
+}
 
 void testOpenCVApp::sharpen(const Mat& myImage, Mat& Result)
 {
